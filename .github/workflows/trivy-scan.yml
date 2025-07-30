@@ -1,0 +1,66 @@
+name: Build & Scan with Trivy
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+      service-context-path:
+        required: true
+        type: string
+      image-name:
+        required: true
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  build-and-scan:
+    name: Build & Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ inputs.service-context-path }}
+          load: true
+          tags: ${{ inputs.image-name }}:ci-${{ github.run_id }}-${{ github.run_attempt }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ inputs.image-name }}:ci-${{ github.run_id }}-${{ github.run_attempt }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: ${{ inputs.service-name }}
+
+      - name: Save Docker image
+        run: |
+          docker save ${{ inputs.image-name }}:ci-${{ github.run_id }}-${{ github.run_attempt }} > /tmp/${{ inputs.service-name }}.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-artifact-${{ inputs.service-name }}
+          path: /tmp/${{ inputs.service-name }}.tar
+          retention-days: 1

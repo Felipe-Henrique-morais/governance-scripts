@@ -1,0 +1,57 @@
+name: Security Checks
+
+on:
+  workflow_call:
+    secrets:
+      GH_TOKEN:
+        required: true
+
+jobs:
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run npm audit
+        run: |
+          if [ -d "backend" ]; then
+            echo "Running npm audit on backend..."
+            cd backend
+            if [ -f "package.json" ]; then
+              npm audit --production || echo "Security issues found"
+            else
+              echo "No package.json found in backend"
+            fi
+            cd ..
+          fi
+          
+          if [ -d "todo-app-frontend" ]; then
+            echo "Running npm audit on frontend..."
+            cd todo-app-frontend
+            if [ -f "package.json" ]; then
+              npm audit --production || echo "Security issues found"
+            else
+              echo "No package.json found in frontend"
+            fi
+          fi
+
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'Todo App'
+          path: '.'
+          format: 'HTML'
+          out: 'reports'
+          args: >
+            --enableExperimental
+            --suppression suppression.xml
+            --failOnCVSS 7
+            --exclude "**/*.git/**"
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dependency Check Report
+          path: ${{ github.workspace }}/reports
