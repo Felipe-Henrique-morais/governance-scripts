@@ -1,48 +1,18 @@
-name: Linters & Formatters
-
+# reusable-linters.yml in Felipe-Henrique-morais/governance-scripts
+name: Reusable Linters & Formatters
 on:
   workflow_call:
+    inputs:
+      backend-path:
+        description: 'Path to the backend service directory'
+        required: true
+        type: string
+      frontend-path:
+        description: 'Path to the frontend service directory'
+        required: true
+        type: string
     secrets:
       GH_TOKEN:
         required: true
 
-jobs:
-  lint:
-    name: Run Linters
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install ESLint
-        run: npm install -g eslint
-
-      - name: Run ESLint
-        run: |
-          if [ -d "backend" ]; then
-            echo "Running ESLint on backend..."
-            cd backend
-            if [ -f "package.json" ]; then
-              npm ci
-              npm run lint || echo "ESLint issues found"
-            else
-              echo "No package.json found in backend"
-            fi
-            cd ..
-          fi
-          
-          if [ -d "todo-app-frontend" ]; then
-            echo "Running ESLint on frontend..."
-            cd todo-app-frontend
-            if [ -f "package.json" ]; then
-              npm ci
-              npm run lint || echo "ESLint issues found"
-            else
-              echo "No package.json found in frontend"
-            fi
-          fi
+# ... rest of your reusable-linters.yml jobs and steps
