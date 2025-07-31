@@ -5,14 +5,49 @@ on:
     inputs:
       backend-path:
         description: 'Path to the backend service directory'
-        required: true
+        required: false
         type: string
       frontend-path:
         description: 'Path to the frontend service directory'
-        required: true
+        required: false
         type: string
     secrets:
       GH_TOKEN:
         required: true
 
-# ... rest of your reusable-linters.yml jobs and steps
+jobs: # <-- THIS 'jobs:' KEY MUST BE PRESENT AND AT THIS INDENTATION LEVEL
+  lint-code: # This is an example job name. You might have a different one.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Backend linting (using the backend-path input)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install Python linting dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black isort
+      - name: Lint with flake8
+        working-directory: ${{ inputs.backend-path }} # Use the input here
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Check formatting with black
+        working-directory: ${{ inputs.backend-path }} # Use the input here
+        run: |
+          black --check . || echo "::warning::Code formatting issues found by Black in backend."
+
+      # Frontend linting (using the frontend-path input)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Node.js linting dependencies
+        working-directory: ${{ inputs.frontend-path }} # Use the input here
+        run: npm install
+      - name: Run ESLint
+        working-directory: ${{ inputs.frontend-path }} # Use the input here
+        run: npm run lint || echo "::warning::Linting issues found by ESLint in frontend."
